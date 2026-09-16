@@ -44,27 +44,29 @@ export default function Dashboard() {
     };
   }, []);
 
-  const fetchLatestTelemetry = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('telemetry_logs')
-        .select('payload, created_at')
-        .eq('mac_address', macAddress)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+  // 1. Hàm lấy bản ghi mới nhất khi vừa tải trang
+const fetchLatestTelemetry = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('telemetry_logs')
+      .select('payload, created_at')
+      .eq('mac_address', macAddress)
+      .order('created_at', { ascending: false }) // Sắp xếp mới nhất lên đầu
+      .limit(1)                                  // Chỉ lấy đúng 1 bản ghi
+      .single();                                 // Trả về dạng Object duy nhất
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Lỗi truy vấn Supabase:', error);
-      }
+    if (error && error.code !== 'PGRST116') {
+      console.error('Lỗi truy vấn:', error.message);
+    }
 
-      if (data) {
-        setTelemetry(data.payload);
-      }
-    } catch (err) {
-      console.error('Lỗi kết nối:', err);
-    } finally {
-      setLoading(false);
+    if (data) {
+      setTelemetry(data.payload); // Đã lấy đúng lần đo mới nhất
+    }
+  } catch (err) {
+    console.error('Lỗi kết nối Supabase:', err);
+  } finally {
+    setLoading(false);
+  }
     }
   };
 
