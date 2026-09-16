@@ -32,17 +32,22 @@ export default function Dashboard() {
   }, []);
 
   const parseAndSetData = (record) => {
-    try {
-      // Xử lý payload nếu Supabase trả về dạng String JSON hoặc Object
-      const parsedPayload = typeof record.payload === 'string' 
-        ? JSON.parse(record.payload) 
-        : record.payload;
-      setTelemetry(parsedPayload);
-      setRecordedAt(record.recorded_at || record.created_at);
-    } catch (e) {
-      console.error('Lỗi parse payload:', e);
+  try {
+    let parsed = record.payload;
+    // Giải mã nếu payload là chuỗi JSON
+    if (typeof parsed === 'string') {
+      parsed = JSON.parse(parsed);
     }
-  };
+    // Giải mã lần 2 nếu chuỗi bị escape nhiều lớp
+    if (typeof parsed === 'string') {
+      parsed = JSON.parse(parsed);
+    }
+    setTelemetry(parsed);
+    setRecordedAt(record.recorded_at || record.created_at);
+  } catch (e) {
+    console.error('Lỗi parse payload:', e);
+  }
+};
 
   const fetchLatestTelemetry = async () => {
     try {
