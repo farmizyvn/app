@@ -3,17 +3,13 @@ import { supabase } from '../lib/supabaseClient';
 
 export default function Dashboard() {
   const [telemetry, setTelemetry] = useState(null);
+  const [recordedAt, setRecordedAt] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [connectionStatus, setConnectionStatus] = useState('Checking');
-  
-  // Địa chỉ MAC cố định của mạch ESP32 Farmizy Node 1
   const macAddress = "68:FE:71:87:10:2C";
 
   useEffect(() => {
-    // 1. Khởi tạo dữ liệu ban đầu
     fetchLatestTelemetry();
 
-    // 2. Thiết lập kênh lắng nghe thời gian thực (Real-time Subscription)
     const channel = supabase
       .channel('schema-db-changes')
       .on(
@@ -25,143 +21,107 @@ export default function Dashboard() {
           filter: `mac_address=eq.${macAddress}`
         },
         (payload) => {
-          console.log('⚡ Dữ liệu mới từ vườn:', payload.new);
-          if (payload.new && payload.new.payload) {
-            setTelemetry(payload.new.payload);
-            setConnectionStatus('Online');
+          if (payload.new) {
+            parseAndSetData(payload.new);
           }
         }
       )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          setConnectionStatus('Online');
-        }
-      });
+      .subscribe();
 
-    // Clean up channel khi component unmount
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // 1. Hàm lấy bản ghi mới nhất khi vừa tải trang
-const fetchLatestTelemetry = async () => {
-  try {
-    const { data, error } = await supabase
-      .from('telemetry_logs')
-      .select('payload, created_at')
-      .eq('mac_address', macAddress)
-      .order('created_at', { ascending: false }) // Sắp xếp mới nhất lên đầu
-      .limit(1)                                  // Chỉ lấy đúng 1 bản ghi
-      .single();                                 // Trả về dạng Object duy nhất
-
-    if (error && error.code !== 'PGRST116') {
-      console.error('Lỗi truy vấn:', error.message);
-    }
-
-    if (data) {
-      setTelemetry(data.payload); // Đã lấy đúng lần đo mới nhất
-    }
-  } catch (err) {
-    console.error('Lỗi kết nối Supabase:', err);
-  } finally {
-    setLoading(false);
-  }
+  const parseAndSetData = (record) => {
+    try {
+      // Xử lý payload nếu Supabase trả về dạng String JSON hoặc Object
+      const parsedPayload = typeof record.payload === 'string' 
+        ? JSON.parse(record.payload) 
+        : record.payload;
+      setTelemetry(parsedPayload);
+      setRecordedAt(record.recorded_at || record.created_at);
+    } catch (e) {
+      console.error('Lỗi parse payload:', e);
     }
   };
 
-  // Đánh giá chỉ số độ ẩm đất để đưa ra khuyến nghị nhanh cho nhà nông
-  const getSoilStatus = (hum) => {
-    if (!hum && hum !== 0) return { label: 'Chưa có dữ liệu', color: 'bg-gray-100 text-gray-600' };
-    if (hum < 40) return { label: 'Đất khô - Cần tưới ngay!', color: 'bg-red-100 text-red-700 border-red-300' };
-    if (hum > 80) return { label: 'Đất quá ẩm - Dừng tưới', color: 'bg-yellow-100 text-yellow-800 border-yellow-300' };
-    return { label: 'Độ ẩm lý tưởng', color: 'bg-green-100 text-green-700 border-green-300' };
+  const fetchLatestTelemetry = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('telemetry_logs')
+        .select('payload, recorded_at, created_at')
+        .eq('mac_address', macAddress)
+        .order('recorded_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (data) parseAndSetData(data);
+    } catch (err) {
+      console.error('Lỗi lấy dữ liệu:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 space-y-3">
-        <div className="w-10 h-10 border-4 border-farmGreen border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-gray-500 font-bold">Đang kết nối dữ liệu vườn...</p>
-      </div>
-    );
-  }
+  if (loading) return <div className="text-center p-8 font-bold text-gray-500">Đang tải dữ liệu vườn...</div>;
 
-  const soilStatus = getSoilStatus(telemetry?.soil?.hum);
+  const soil = telemetry?.soil || {};
 
   return (
-    <div className="space-y-5 max-w-md mx-auto">
-      {/* Header & Trạng thái kết nối */}
-      <div className="flex justify-between items-center border-b pb-3 border-gray-200">
+    <div className="space-y-4 max-w-md mx-auto p-1 pb-20">
+      {/* Header */}
+      <div className="flex justify-between items-center border-b pb-2">
         <div>
-          <h1 className="text-xl font-black text-gray-800">🌱 Trạm Cảm Biến Sầu Riêng</h1>
-          <p className="text-xs text-gray-500 font-medium">MAC: {macAddress}</p>
+          <h1 className="text-lg font-black text-gray-800">🌱 Trạm Cảm Biến 7 Trong 1</h1>
+          <p className="text-xs text-gray-500">MAC: {macAddress}</p>
         </div>
-        <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${
-          connectionStatus === 'Online' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
-        }`}>
-          ● {connectionStatus}
-        </span>
+        <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-green-100 text-green-700">● Online</span>
       </div>
 
-      {/* Cảnh báo trạng thái đất */}
-      <div className={`p-3.5 rounded-xl border font-bold text-sm text-center shadow-sm ${soilStatus.color}`}>
-        {soilStatus.label}
+      {/* Grid Chỉ Số Môi Trường Core */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-white p-3.5 rounded-xl border shadow-sm">
+          <span className="text-xs font-bold text-gray-400">💧 ĐỘ ẨM ĐẤT</span>
+          <p className="text-2xl font-black text-blue-600 mt-1">{soil.hum ?? '--'} %</p>
+        </div>
+        <div className="bg-white p-3.5 rounded-xl border shadow-sm">
+          <span className="text-xs font-bold text-gray-400">🌡️ NHIỆT ĐỘ</span>
+          <p className="text-2xl font-black text-orange-500 mt-1">{soil.tmp ?? '--'} °C</p>
+        </div>
+        <div className="bg-white p-3.5 rounded-xl border shadow-sm">
+          <span className="text-xs font-bold text-gray-400">🧪 ĐỘ pH</span>
+          <p className="text-2xl font-black text-emerald-600 mt-1">{soil.ph ?? '--'}</p>
+        </div>
+        <div className="bg-white p-3.5 rounded-xl border shadow-sm">
+          <span className="text-xs font-bold text-gray-400">⚡ ĐỘ DẪN EC</span>
+          <p className="text-2xl font-black text-purple-600 mt-1">{soil.ec ?? '--'} <span className="text-xs">uS/cm</span></p>
+        </div>
       </div>
 
-      {/* Grid hiển thị các thông số cảm biến */}
-      <div className="grid grid-cols-2 gap-4">
-        {/* Thẻ Độ Ẩm Đất */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
-          <div className="flex items-center space-x-2">
-            <span className="text-xl">💧</span>
-            <span className="text-xs font-bold text-gray-500 uppercase">Độ Ẩm Đất</span>
+      {/* Phân Hệ Dinh Dưỡng N-P-K */}
+      <div className="bg-white p-4 rounded-xl border shadow-sm space-y-2">
+        <h2 className="text-xs font-extrabold text-gray-700 uppercase tracking-wider">🌾 Dinh Dưỡng Đất (N - P - K)</h2>
+        <div className="grid grid-cols-3 gap-2 text-center pt-1">
+          <div className="bg-green-50 p-2.5 rounded-lg border border-green-100">
+            <span className="text-xs font-bold text-green-700">Đạm (N)</span>
+            <p className="text-lg font-black text-green-800 mt-0.5">{soil.n ?? '--'}</p>
+            <span className="text-[10px] text-gray-400">mg/kg</span>
           </div>
-          <div className="mt-3">
-            <span className="text-3xl font-black text-gray-800">{telemetry?.soil?.hum ?? '--'}</span>
-            <span className="text-sm font-bold text-gray-500 ml-1">%</span>
+          <div className="bg-yellow-50 p-2.5 rounded-lg border border-yellow-100">
+            <span className="text-xs font-bold text-yellow-700">Lân (P)</span>
+            <p className="text-lg font-black text-yellow-800 mt-0.5">{soil.p ?? '--'}</p>
+            <span className="text-[10px] text-gray-400">mg/kg</span>
           </div>
-        </div>
-
-        {/* Thẻ Nhiệt Độ Đất */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
-          <div className="flex items-center space-x-2">
-            <span className="text-xl">🌡️</span>
-            <span className="text-xs font-bold text-gray-500 uppercase">Nhiệt Độ Đất</span>
-          </div>
-          <div className="mt-3">
-            <span className="text-3xl font-black text-gray-800">{telemetry?.soil?.tmp ?? '--'}</span>
-            <span className="text-sm font-bold text-gray-500 ml-1">°C</span>
-          </div>
-        </div>
-
-        {/* Thẻ Nồng Độ pH */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
-          <div className="flex items-center space-x-2">
-            <span className="text-xl">🧪</span>
-            <span className="text-xs font-bold text-gray-500 uppercase">Độ pH Đất</span>
-          </div>
-          <div className="mt-3">
-            <span className="text-3xl font-black text-gray-800">{telemetry?.soil?.ph ?? '--'}</span>
-          </div>
-        </div>
-
-        {/* Thẻ Dẫn Điện EC */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
-          <div className="flex items-center space-x-2">
-            <span className="text-xl">⚡</span>
-            <span className="text-xs font-bold text-gray-500 uppercase">Dẫn Điện EC</span>
-          </div>
-          <div className="mt-3">
-            <span className="text-3xl font-black text-gray-800">{telemetry?.soil?.ec ?? '--'}</span>
-            <span className="text-xs font-bold text-gray-500 ml-1">uS/cm</span>
+          <div className="bg-red-50 p-2.5 rounded-lg border border-red-100">
+            <span className="text-xs font-bold text-red-700">Kali (K)</span>
+            <p className="text-lg font-black text-red-800 mt-0.5">{soil.k ?? '--'}</p>
+            <span className="text-[10px] text-gray-400">mg/kg</span>
           </div>
         </div>
       </div>
 
-      {/* Thông tin thời gian cập nhật */}
-      <div className="text-center text-xs text-gray-400 font-medium pt-2">
-        Tự động cập nhật qua Supabase Real-time Engine
+      {/* Mốc thời gian */}
+      <div className="text-center text-[11px] text-gray-400 font-medium">
+        Lần đo cuối: {recordedAt ? new Date(recordedAt).toLocaleString('vi-VN') : 'Đang cập nhật...'}
       </div>
     </div>
   );
