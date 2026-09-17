@@ -44,7 +44,7 @@ const parseAndSetData = (record) => {
     }
     
     setTelemetry(parsed);
-    setRecordedAt(record.recorded_at || record.created_at);
+    setRecordedAt(record.recorded_at);
   } catch (e) {
     console.error('Lỗi phân tích dữ liệu JSON:', e);
   }
@@ -54,15 +54,21 @@ const parseAndSetData = (record) => {
     try {
       const { data, error } = await supabase
         .from('telemetry_logs')
-        .select('payload, recorded_at, created_at')
+        // Chỉ lấy những cột thực sự tồn tại trong DB của bạn
+        .select('payload, recorded_at') 
         .eq('mac_address', macAddress)
-        .order('recorded_at', { ascending: false })
+        .order('recorded_at', { ascending: false }) // Sắp xếp theo recorded_at
         .limit(1)
         .single();
 
+      if (error) {
+        console.error('Lỗi truy vấn:', error);
+        return;
+      }
+
       if (data) parseAndSetData(data);
     } catch (err) {
-      console.error('Lỗi lấy dữ liệu:', err);
+      console.error('Lỗi hệ thống ngoại lệ:', err);
     } finally {
       setLoading(false);
     }
