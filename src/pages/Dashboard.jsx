@@ -133,7 +133,7 @@ const parseAndSetData = (record) => {
 
       {/* Mốc thời gian */}
       <div className="text-center text-[11px] text-gray-400 font-medium">
-        Lần đo cuối: {recordedAt ? new Date(recordedAt).toLocaleString('vi-VN') : 'Đang cập nhật...'}
+        Lần đo cuối: {recordedAt ? new Date(recordedAt.endsWith('Z') || recordedAt.includes('+') ? recordedAt : `${recordedAt}Z`).toLocaleString('vi-VN') : 'Đang cập nhật...'}
       </div>
     </div>
   );
