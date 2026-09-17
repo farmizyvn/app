@@ -20,8 +20,8 @@ export default function Control() {
   
   const MAC_ADDRESS = "68:FE:71:87:10:2C";
   // ĐIỀN THÔNG TIN WORKER CỦA BẠN VÀO ĐÂY
-  const WORKER_URL = "https://farmizy-worker.YOUR-SUBDOMAIN.workers.dev";
-  const WEBHOOK_SECRET = "YOUR_WEBHOOK_SECRET";
+  const WORKER_URL = "https://app.farmizyvn.workers.dev";
+  const WEBHOOK_SECRET = "Farmizy_CaMau_2026_Secret";
 
   useEffect(() => {
     fetchLatestRelayState();
