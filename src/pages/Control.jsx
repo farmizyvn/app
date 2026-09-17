@@ -20,8 +20,8 @@ export default function Control() {
   
   const MAC_ADDRESS = "68:FE:71:87:10:2C";
   // ĐIỀN THÔNG TIN WORKER CỦA BẠN VÀO ĐÂY
-  const WORKER_URL = "https://app.farmizyvn.workers.dev";
-  const WEBHOOK_SECRET = "Farmizy_CaMau_2026_Secret";
+  const WORKER_URL = "https://farmizy-worker.YOUR-SUBDOMAIN.workers.dev";
+  const WEBHOOK_SECRET = "YOUR_WEBHOOK_SECRET";
 
   useEffect(() => {
     fetchLatestRelayState();
@@ -73,7 +73,6 @@ export default function Control() {
     }
   };
 
-  // 2. Đảm bảo hàm toggleRelay sử dụng đúng biến macAddress
   const toggleRelay = async (relayIndex, currentState) => {
     const nextState = !currentState;
     setLoadingRelay(relayIndex);
@@ -88,8 +87,8 @@ export default function Control() {
         },
         body: JSON.stringify({
           action: 'control',
-          mac_address: macAddress, // Gọi đúng biến MAC
-          topic: `farmizy/control/${macAddress}`, // Định tuyến Topic động theo MAC
+          mac_address: MAC_ADDRESS,
+          topic: `farmizy/control/${MAC_ADDRESS}`,
           payload: { relay: relayIndex, state: nextState ? 1 : 0 }
         })
       });
