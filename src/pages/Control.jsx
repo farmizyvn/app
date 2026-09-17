@@ -14,13 +14,11 @@ const RELAY_CONFIG = [
 ];
 
 export default function Control() {
-  // 1. Bổ sung mã MAC của trạm ESP32 hiện tại
-  const macAddress = "68:FE:71:87:10:2C"; 
-  
   const [relays, setRelays] = useState({});
   const [loadingRelay, setLoadingRelay] = useState(null);
   const [statusMessage, setStatusMessage] = useState('');
-
+  
+  const MAC_ADDRESS = "68:FE:71:87:10:2C";
   // ĐIỀN THÔNG TIN WORKER CỦA BẠN VÀO ĐÂY
   const WORKER_URL = "https://app.farmizyvn.workers.dev";
   const WEBHOOK_SECRET = "Farmizy_CaMau_2026_Secret";
