@@ -31,21 +31,22 @@ export default function Dashboard() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const parseAndSetData = (record) => {
+const parseAndSetData = (record) => {
   try {
     let parsed = record.payload;
-    // Giải mã nếu payload là chuỗi JSON
+    // Bóc tách lớp chuỗi thứ nhất
     if (typeof parsed === 'string') {
       parsed = JSON.parse(parsed);
     }
-    // Giải mã lần 2 nếu chuỗi bị escape nhiều lớp
+    // Bóc tách lớp chuỗi thứ hai (nếu có)
     if (typeof parsed === 'string') {
       parsed = JSON.parse(parsed);
     }
+    
     setTelemetry(parsed);
     setRecordedAt(record.recorded_at || record.created_at);
   } catch (e) {
-    console.error('Lỗi parse payload:', e);
+    console.error('Lỗi phân tích dữ liệu JSON:', e);
   }
 };
 
