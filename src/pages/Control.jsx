@@ -14,11 +14,13 @@ const RELAY_CONFIG = [
 ];
 
 export default function Control() {
+  // 1. Bổ sung mã MAC của trạm ESP32 hiện tại
+  const macAddress = "68:FE:71:87:10:2C"; 
+  
   const [relays, setRelays] = useState({});
   const [loadingRelay, setLoadingRelay] = useState(null);
   const [statusMessage, setStatusMessage] = useState('');
-  
-  const MAC_ADDRESS = "68:FE:71:87:10:2C";
+
   // ĐIỀN THÔNG TIN WORKER CỦA BẠN VÀO ĐÂY
   const WORKER_URL = "https://app.farmizyvn.workers.dev";
   const WEBHOOK_SECRET = "Farmizy_CaMau_2026_Secret";
@@ -73,6 +75,7 @@ export default function Control() {
     }
   };
 
+  // 2. Đảm bảo hàm toggleRelay sử dụng đúng biến macAddress
   const toggleRelay = async (relayIndex, currentState) => {
     const nextState = !currentState;
     setLoadingRelay(relayIndex);
@@ -87,8 +90,8 @@ export default function Control() {
         },
         body: JSON.stringify({
           action: 'control',
-          mac_address: MAC_ADDRESS,
-          topic: `farmizy/control/${MAC_ADDRESS}`,
+          mac_address: macAddress, // Gọi đúng biến MAC
+          topic: `farmizy/control/${macAddress}`, // Định tuyến Topic động theo MAC
           payload: { relay: relayIndex, state: nextState ? 1 : 0 }
         })
       });
